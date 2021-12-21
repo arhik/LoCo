@@ -29,7 +29,7 @@ def load_classification_model(opt):
     if opt.resnet == 34:
         in_channels = 256
     else:
-        in_channels = 1024
+        in_channels = 2048
 
     if opt.dataset == "stl10":
         num_classes = 10

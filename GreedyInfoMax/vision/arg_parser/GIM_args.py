@@ -3,7 +3,7 @@ from optparse import OptionGroup
 def parse_GIM_args(parser):
     group = OptionGroup(parser, "Greedy InfoMax training options")
     group.add_option(
-        "--learning_rate", type="float", default=2e-4, help="Learning rate"
+        "--learning_rate", type="float", default=2e-3, help="Learning rate"
     )
     group.add_option(
         "--prediction_step",
@@ -20,14 +20,14 @@ def parse_GIM_args(parser):
     group.add_option(
         "--model_splits",
         type="int",
-        default=3,
+        default=4,
         help="Number of individually trained modules that the original model should be split into "
              "options: 1 (normal end-to-end backprop) or 3 (default used in experiments of paper)",
     )
     group.add_option(
         "--train_module",
         type="int",
-        default=3,
+        default=4,
         help="Index of the module to be trained individually (0-2), "
         "or training network as one (3)",
     )

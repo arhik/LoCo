@@ -11,6 +11,22 @@ def get_dataloader(opt):
         train_loader, train_dataset, supervised_loader, supervised_dataset, test_loader, test_dataset = get_stl10_dataloader(
             opt
         )
+    elif opt.dataset == "CIFAR10":
+        train_loader, train_dataset, supervised_loader, supervised_dataset, test_loader, test_dataset = get_cifar10_dataloader(
+            opt
+        )
+    elif opt.dataset == "coco1k":
+        train_loader, train_dataset, supervised_loader, supervised_dataset, test_loader, test_dataset = get_coco1k_dataloader(
+            opt
+        )
+    elif opt.dataset == "imagenet1k":
+        train_loader, train_dataset, supervised_loader, supervised_dataset, test_loader, test_dataset = get_imagenet1k_dataloader(
+            opt
+        )
+    elif opt.dataset == "imagenetmini":
+        train_loader, train_dataset, supervised_loader, supervised_dataset, test_loader, test_dataset = get_imagenetmini_dataloader(
+            opt
+        )
     else:
         raise Exception("Invalid option")
 
@@ -22,6 +38,403 @@ def get_dataloader(opt):
         test_loader,
         test_dataset,
     )
+
+
+def get_imagenet1k_dataloader(opt):
+    traindir = os.path.join(opt.data_input_dir, "imagenet1k", 'train')
+    valdir = os.path.join(opt.data_input_dir, "imagenet1k", 'val')
+    unsuperviseddir = os.path.join(opt.data_input_dir, "imagenet1k", 'unsupervised')
+    
+    aug = {
+        "imagenet1k": {
+            # "randcrop": 48,
+            "flip": True,
+            "grayscale": opt.grayscale,
+            "mean": [0.4313, 0.4156, 0.3663],  # values for train+unsupervised combined
+            "std": [0.2683, 0.2610, 0.2687],
+            "bw_mean": [0.4120],  # values for train+unsupervised combined
+            "bw_std": [0.2570],
+        }  # values for labeled train set: mean [0.4469, 0.4400, 0.4069], std [0.2603, 0.2566, 0.2713]
+    }
+    transform_train = transforms.Compose(
+        [get_transforms(eval=False, aug=aug["imagenet1k"])]
+    )
+    transform_valid = transforms.Compose(
+        [get_transforms(eval=True, aug=aug["imagenet1k"])]
+    )
+
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    train_dataset = torchvision.datasets.ImageFolder(
+        traindir,
+        transform_train)
+
+    test_dataset = torchvision.datasets.ImageFolder(
+        valdir, 
+        transform_valid)
+
+    unsupervised_dataset = torchvision.datasets.ImageFolder(
+        valdir, 
+        transform_train)
+
+    for k, v in unsupervised_dataset.class_to_idx.items():
+        unsupervised_dataset.class_to_idx[k] = -1
+
+    # if opt.distributed:
+    #     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    # else:
+    train_sampler = None # TODO
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=opt.batch_size_multiGPU, shuffle=(train_sampler is None),
+        num_workers=12, pin_memory=True, sampler=train_sampler)
+
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=opt.batch_size_multiGPU, shuffle=False,
+        num_workers=12, pin_memory=True)
+    
+    unsupervised_loader = torch.utils.data.DataLoader(
+        unsupervised_dataset, batch_size=opt.batch_size_multiGPU, shuffle=False,
+        num_workers=12, pin_memory=True)
+    
+    return (
+        unsupervised_loader,
+        unsupervised_dataset,
+        train_loader,
+        train_dataset,
+        test_loader,
+        test_dataset,
+    )
+
+
+
+def get_imagenetmini_dataloader(opt):
+    traindir = os.path.join(opt.data_input_dir, "imagenet-mini", 'train')
+    valdir = os.path.join(opt.data_input_dir, "imagenet-mini", 'val')
+    unsuperviseddir = os.path.join(opt.data_input_dir, "imagenet-mini", 'unsupervised')
+    
+    aug = {
+        "imagenetmini": {
+            "randcrop": 96,
+            "flip": True,
+            "grayscale": opt.grayscale,
+            "mean": [0.4313, 0.4156, 0.3663],  # values for train+unsupervised combined
+            "std": [0.2683, 0.2610, 0.2687],
+            "bw_mean": [0.4120],  # values for train+unsupervised combined
+            "bw_std": [0.2570],
+        }  # values for labeled train set: mean [0.4469, 0.4400, 0.4069], std [0.2603, 0.2566, 0.2713]
+    }
+    transform_train = transforms.Compose(
+        [getImageNet_transforms(eval=False, aug=aug["imagenetmini"])]
+    )
+    transform_valid = transforms.Compose(
+        [getImageNet_transforms(eval=True, aug=aug["imagenetmini"])]
+    )
+
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    train_dataset = torchvision.datasets.ImageFolder(
+        traindir,
+        transform_train)
+
+    test_dataset = torchvision.datasets.ImageFolder(
+        valdir, 
+        transform_valid)
+
+    unsupervised_dataset = torchvision.datasets.ImageFolder(
+        valdir, 
+        transform_train)
+
+    for k, v in unsupervised_dataset.class_to_idx.items():
+        unsupervised_dataset.class_to_idx[k] = -1
+
+    # if opt.distributed:
+    #     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    # else:
+    train_sampler = None # TODO
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=opt.batch_size_multiGPU, shuffle=(train_sampler is None),
+        num_workers=12, pin_memory=True, sampler=train_sampler)
+
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=opt.batch_size_multiGPU, shuffle=False,
+        num_workers=12, pin_memory=True)
+    
+    unsupervised_loader = torch.utils.data.DataLoader(
+        unsupervised_dataset, batch_size=opt.batch_size_multiGPU, shuffle=False,
+        num_workers=12, pin_memory=True)
+    
+    if opt.validate:
+        print("Use train / val split")
+
+        if opt.training_dataset == "train":
+            dataset_size = len(train_dataset)
+            train_sampler, valid_sampler = create_validation_sampler(dataset_size)
+
+            train_loader = torch.utils.data.DataLoader(
+                train_dataset,
+                batch_size=opt.batch_size_multiGPU,
+                sampler=train_sampler,
+                num_workers=16,
+            )
+
+        elif opt.training_dataset == "unlabeled":
+            dataset_size = len(unsupervised_dataset)
+            train_sampler, valid_sampler = create_validation_sampler(dataset_size)
+
+            unsupervised_loader = torch.utils.data.DataLoader(
+                unsupervised_dataset,
+                batch_size=opt.batch_size_multiGPU,
+                sampler=train_sampler,
+                num_workers=16,
+            )
+
+        else:
+            raise Exception("Invalid option")
+
+        # overwrite test_dataset and _loader with validation set
+        test_dataset = torchvision.datasets.ImageFolder(
+            valdir, 
+            transform_valid)
+
+        test_loader = torch.utils.data.DataLoader(
+            test_dataset,
+            batch_size=opt.batch_size_multiGPU,
+            sampler=valid_sampler,
+            num_workers=16,
+        )
+
+    else:
+        print("Use (train+val) / test split")
+    
+    return (
+        unsupervised_loader,
+        unsupervised_dataset,
+        train_loader,
+        train_dataset,
+        test_loader,
+        test_dataset,
+    )
+
+
+def get_coco1k_dataloader(opt):
+    base_folder = os.path.join(opt.data_input_dir, "coco1k")
+
+    aug = {
+        "coco1k": {
+            "randcrop": 64,
+            "flip": True,
+            "grayscale": opt.grayscale,
+            "mean": [0.4313, 0.4156, 0.3663],  # values for train+unsupervised combined
+            "std": [0.2683, 0.2610, 0.2687],
+            "bw_mean": [0.4120],  # values for train+unsupervised combined
+            "bw_std": [0.2570],
+        }  # values for labeled train set: mean [0.4469, 0.4400, 0.4069], std [0.2603, 0.2566, 0.2713]
+    }
+    transform_train = transforms.Compose(
+        [get_transforms(eval=False, aug=aug["coco1k"])]
+    )
+    transform_valid = transforms.Compose(
+        [get_transforms(eval=True, aug=aug["coco1k"])]
+    )
+
+    unsupervised_dataset = torchvision.datasets.CocoDetection(
+        base_folder,
+        split="unlabeled",
+        transform=transform_train,
+        download=opt.download_dataset,
+    ) #set download to True to get the dataset
+
+    train_dataset = torchvision.datasets.CocoDetection(
+        base_folder, split="train", transform=transform_train, download=opt.download_dataset
+    )
+
+    test_dataset = torchvision.datasets.CocoDetection(
+        base_folder, split="test", transform=transform_valid, download=opt.download_dataset
+    )
+
+    # default dataset loaders
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=opt.batch_size_multiGPU, shuffle=True, num_workers=16
+    )
+
+    unsupervised_loader = torch.utils.data.DataLoader(
+        unsupervised_dataset,
+        batch_size=opt.batch_size_multiGPU,
+        shuffle=True,
+        num_workers=16,
+    )
+
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=opt.batch_size_multiGPU, shuffle=False, num_workers=16
+    )
+
+    # create train/val split
+    if opt.validate:
+        print("Use train / val split")
+
+        if opt.training_dataset == "train":
+            dataset_size = len(train_dataset)
+            train_sampler, valid_sampler = create_validation_sampler(dataset_size)
+
+            train_loader = torch.utils.data.DataLoader(
+                train_dataset,
+                batch_size=opt.batch_size_multiGPU,
+                sampler=train_sampler,
+                num_workers=16,
+            )
+
+        elif opt.training_dataset == "unlabeled":
+            dataset_size = len(unsupervised_dataset)
+            train_sampler, valid_sampler = create_validation_sampler(dataset_size)
+
+            unsupervised_loader = torch.utils.data.DataLoader(
+                unsupervised_dataset,
+                batch_size=opt.batch_size_multiGPU,
+                sampler=train_sampler,
+                num_workers=16,
+            )
+
+        else:
+            raise Exception("Invalid option")
+
+        # overwrite test_dataset and _loader with validation set
+        test_dataset = torchvision.datasets.CocoDetection(
+            base_folder,
+            split=opt.training_dataset,
+            transform=transform_valid,
+            download=opt.download_dataset,
+        )
+
+        test_loader = torch.utils.data.DataLoader(
+            test_dataset,
+            batch_size=opt.batch_size_multiGPU,
+            sampler=valid_sampler,
+            num_workers=16,
+        )
+
+    else:
+        print("Use (train+val) / test split")
+
+    return (
+        unsupervised_loader,
+        unsupervised_dataset,
+        train_loader,
+        train_dataset,
+        test_loader,
+        test_dataset,
+    )
+
+
+def get_cifar10_dataloader(opt):
+    base_folder = os.path.join(opt.data_input_dir, "cifar10")
+
+    aug = {
+        "cifar10": {
+            "randcrop": 64,
+            "flip": True,
+            "grayscale": opt.grayscale,
+            "mean": [0.4313, 0.4156, 0.3663],  # values for train+unsupervised combined
+            "std": [0.2683, 0.2610, 0.2687],
+            "bw_mean": [0.4120],  # values for train+unsupervised combined
+            "bw_std": [0.2570],
+        }  # values for labeled train set: mean [0.4469, 0.4400, 0.4069], std [0.2603, 0.2566, 0.2713]
+    }
+    transform_train = transforms.Compose(
+        [getcifar_transforms(eval=False, aug=aug["cifar10"])]
+    )
+    transform_valid = transforms.Compose(
+        [getcifar_transforms(eval=True, aug=aug["cifar10"])]
+    )
+
+    unsupervised_dataset = torchvision.datasets.CIFAR10(
+        base_folder,
+        transform=transform_train,
+        download=opt.download_dataset,
+    ) #set download to True to get the dataset
+
+    train_dataset = torchvision.datasets.CIFAR10(
+        base_folder, transform=transform_train, download=opt.download_dataset
+    )
+
+    test_dataset = torchvision.datasets.CIFAR10(
+        base_folder, transform=transform_valid, download=opt.download_dataset
+    )
+
+    # default dataset loaders
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=opt.batch_size_multiGPU, shuffle=True, num_workers=16
+    )
+
+    unsupervised_loader = torch.utils.data.DataLoader(
+        unsupervised_dataset,
+        batch_size=opt.batch_size_multiGPU,
+        shuffle=True,
+        num_workers=16,
+    )
+
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=opt.batch_size_multiGPU, shuffle=False, num_workers=16
+    )
+
+    # create train/val split
+    if opt.validate:
+        print("Use train / val split")
+
+        if opt.training_dataset == "train":
+            dataset_size = len(train_dataset)
+            train_sampler, valid_sampler = create_validation_sampler(dataset_size)
+
+            train_loader = torch.utils.data.DataLoader(
+                train_dataset,
+                batch_size=opt.batch_size_multiGPU,
+                sampler=train_sampler,
+                num_workers=16,
+            )
+
+        elif opt.training_dataset == "unlabeled":
+            dataset_size = len(unsupervised_dataset)
+            train_sampler, valid_sampler = create_validation_sampler(dataset_size)
+
+            unsupervised_loader = torch.utils.data.DataLoader(
+                unsupervised_dataset,
+                batch_size=opt.batch_size_multiGPU,
+                sampler=train_sampler,
+                num_workers=16,
+            )
+
+        else:
+            raise Exception("Invalid option")
+
+        # overwrite test_dataset and _loader with validation set
+        test_dataset = torchvision.datasets.STL10(
+            base_folder,
+            split=opt.training_dataset,
+            transform=transform_valid,
+            download=opt.download_dataset,
+        )
+
+        test_loader = torch.utils.data.DataLoader(
+            test_dataset,
+            batch_size=opt.batch_size_multiGPU,
+            sampler=valid_sampler,
+            num_workers=16,
+        )
+
+    else:
+        print("Use (train+val) / test split")
+
+    return (
+        unsupervised_loader,
+        unsupervised_dataset,
+        train_loader,
+        train_dataset,
+        test_loader,
+        test_dataset,
+    )
+
+
 
 
 def get_stl10_dataloader(opt):
@@ -149,6 +562,61 @@ def create_validation_sampler(dataset_size):
     valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(val_indices)
 
     return train_sampler, valid_sampler
+
+
+def getImageNet_transforms(eval=False, aug=None):
+    trans = []
+    
+    trans.append(transforms.Resize(128))
+    trans.append(transforms.CenterCrop(112))
+
+    if aug["randcrop"] and not eval:
+        trans.append(transforms.RandomCrop(aug["randcrop"]))
+
+    if aug["randcrop"] and eval:
+        trans.append(transforms.CenterCrop(aug["randcrop"]))
+
+    if aug["flip"] and not eval:
+        trans.append(transforms.RandomHorizontalFlip())
+
+    if aug["grayscale"]:
+        trans.append(transforms.Grayscale())
+        trans.append(transforms.ToTensor())
+        trans.append(transforms.Normalize(mean=aug["bw_mean"], std=aug["bw_std"]))
+    elif aug["mean"]:
+        trans.append(transforms.ToTensor())
+        trans.append(transforms.Normalize(mean=aug["mean"], std=aug["std"]))
+    else:
+        trans.append(transforms.ToTensor())
+
+    trans = transforms.Compose(trans)
+    return trans
+
+
+def getcifar_transforms(eval=False, aug=None):
+    trans = []
+    
+    if aug["randcrop"] and not eval:
+        trans.append(transforms.RandomResizedCrop(aug["randcrop"]))
+
+    if aug["randcrop"] and eval:
+        trans.append(transforms.CenterCrop(aug["randcrop"]))
+
+    if aug["flip"] and not eval:
+        trans.append(transforms.RandomHorizontalFlip())
+
+    if aug["grayscale"]:
+        trans.append(transforms.Grayscale())
+        trans.append(transforms.ToTensor())
+        trans.append(transforms.Normalize(mean=aug["bw_mean"], std=aug["bw_std"]))
+    elif aug["mean"]:
+        trans.append(transforms.ToTensor())
+        trans.append(transforms.Normalize(mean=aug["mean"], std=aug["std"]))
+    else:
+        trans.append(transforms.ToTensor())
+
+    trans = transforms.Compose(trans)
+    return trans
 
 
 def get_transforms(eval=False, aug=None):
